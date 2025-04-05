@@ -1,0 +1,48 @@
+site_name: Movie Recommendation System Documentation
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - Model:
+    - Overview: model/overview.md
+    - Training Process: model/training.md
+    - Understanding Epochs: model/epochs.md
+    - Understanding Gradients: model/gradients.md
+    - Hyperparameters: model/hyperparameters.md
+    - Model Evaluation: model/evaluation.md
+  - Code:
+    - Model Implementation: code/model_implementation.md
+    - Data Processing: code/data_processing.md
+    - Running the Model: code/running_model.md
+    - Running on Google Colab: code/running_on_colab.md
+    - Colab Training Guide: code/colab_guide.md
+  - Data:
+    - Data Collection: data/collection.md
+    - Data Processing: data/processing.md
+    - Data Analysis: data/analysis.md
+  - API:
+    - Overview: api/overview.md
+    - Endpoints: api/endpoints.md
+    - Authentication: api/authentication.md
+  - Deployment:
+    - Overview: deployment/overview.md
+    - Requirements: deployment/requirements.md
+    - Configuration: deployment/configuration.md
+    - Monitoring: deployment/monitoring.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - footnotes
+
+repo_url: https://github.com/yourusername/movie_recommendation
+repo_name: movie_recommendation 
