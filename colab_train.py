@@ -41,7 +41,18 @@ class ColabTrainer:
 
     def load_data(self):
         """Load and prepare data"""
-        data_loader = DataLoader()
+        # Define ratings file path
+        ratings_file = '/content/drive/MyDrive/movie_recommendation_data/ratings_export.csv'
+
+        # Initialize data loader with file paths
+        data_loader = DataLoader(
+            file_path=ratings_file,
+            checkpoint_file='ratings_data_checkpoint.pkl',
+            chunk_size=250,
+            checkpoint_interval=50000
+        )
+
+        # Load and split the data
         train_data, val_data = data_loader.load_and_split_data()
         self.user_mapping = data_loader.user_mapping
         self.movie_mapping = data_loader.movie_mapping
