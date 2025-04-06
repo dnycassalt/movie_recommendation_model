@@ -14,7 +14,7 @@ from data_loader import DataLoader
 class ColabTrainer:
     def __init__(self, embedding_dim=50, learning_rate=0.001, batch_size=1024, num_epochs=10):
         # Mount Google Drive
-        drive.mount('/content/drive')
+       # drive.mount('/content/drive')
 
         # Create necessary directories
         self.model_dir = '/content/drive/MyDrive/movie_recommendation_data/models'
