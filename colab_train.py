@@ -50,8 +50,8 @@ class ColabTrainer:
         data_loader = DataLoader(
             file_path=ratings_file,
             checkpoint_file='ratings_data_checkpoint.pkl',
-            chunk_size=250,
-            checkpoint_interval=50000
+            chunk_size=20050,
+            checkpoint_interval=500000
         )
 
         # Load the data
