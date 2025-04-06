@@ -279,6 +279,42 @@ class ColabTrainer:
             os.remove(os.path.join(self.backup_dir, backup))
             print(f"Removed old backup: {backup}")
 
+    def summarize_best_model(self):
+        """Print summary of the best model's performance"""
+        # Find the epoch with best validation loss
+        best_epoch = self.val_losses.index(min(self.val_losses))
+
+        print("\n" + "="*50)
+        print("BEST MODEL SUMMARY")
+        print("="*50)
+        print(f"Best Epoch: {best_epoch + 1}")
+        print(f"Validation Loss: {self.val_losses[best_epoch]:.4f}")
+        print(f"Training Loss: {self.train_losses[best_epoch]:.4f}")
+        print(f"Validation Precision: {self.val_precisions[best_epoch]:.4f}")
+        print(f"Validation Recall: {self.val_recalls[best_epoch]:.4f}")
+        print(f"Training Precision: {self.train_precisions[best_epoch]:.4f}")
+        print(f"Training Recall: {self.train_recalls[best_epoch]:.4f}")
+
+        # Calculate F1 score
+        val_f1 = 2 * (self.val_precisions[best_epoch] * self.val_recalls[best_epoch]) / \
+            (self.val_precisions[best_epoch] +
+             self.val_recalls[best_epoch] + 1e-10)
+        train_f1 = 2 * (self.train_precisions[best_epoch] * self.train_recalls[best_epoch]) / \
+            (self.train_precisions[best_epoch] +
+             self.train_recalls[best_epoch] + 1e-10)
+
+        print(f"Validation F1 Score: {val_f1:.4f}")
+        print(f"Training F1 Score: {train_f1:.4f}")
+
+        # Model configuration
+        print("\nModel Configuration:")
+        print(f"Embedding Dimension: {self.embedding_dim}")
+        print(f"Learning Rate: {self.learning_rate}")
+        print(f"Batch Size: {self.batch_size}")
+        print(f"Number of Users: {len(self.user_mapping)}")
+        print(f"Number of Movies: {len(self.movie_mapping)}")
+        print("="*50)
+
     def train(self, resume_from=None):
         """Main training loop"""
         print("Loading data...")
@@ -388,6 +424,9 @@ class ColabTrainer:
             print(f"Validation Precision: {avg_val_precision:.4f}")
             print(f"Validation Recall: {avg_val_recall:.4f}")
             print("-" * 50)
+
+        # After training completes, summarize the best model
+        self.summarize_best_model()
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ nav:
     - Understanding Gradients: model/gradients.md
     - Hyperparameters: model/hyperparameters.md
     - Model Evaluation: model/evaluation.md
+    - Evaluation Metrics: model/metrics.md
   - Code:
     - Model Implementation: code/model_implementation.md
     - Data Processing: code/data_processing.md
