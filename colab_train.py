@@ -5,6 +5,7 @@ from datetime import datetime
 from google.colab import drive
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
+import shutil
 
 from recommendation_model import CollaborativeFiltering
 from data_loader import DataLoader
@@ -16,10 +17,12 @@ class ColabTrainer:
         drive.mount('/content/drive')
 
         # Create necessary directories
-        self.model_dir = '/content/drive/MyDrive/models'
-        self.checkpoint_dir = '/content/drive/MyDrive/checkpoints'
-        os.makedirs(self.model_dir, exist_ok=True)
-        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        self.model_dir = '/content/drive/MyDrive/movie_recommendation_data/models'
+        self.checkpoint_dir = '/content/drive/MyDrive/movie_recommendation_data/checkpoints'
+        self.backup_dir = '/content/drive/MyDrive/movie_recommendation_data/backups'
+
+        for dir_path in [self.model_dir, self.checkpoint_dir, self.backup_dir]:
+            os.makedirs(dir_path, exist_ok=True)
 
         # Training parameters
         self.embedding_dim = embedding_dim
@@ -58,7 +61,10 @@ class ColabTrainer:
         self.criterion = nn.MSELoss()
 
     def save_checkpoint(self, epoch, train_loss, val_loss, is_best=False):
-        """Save model checkpoint"""
+        """Save model checkpoint with versioning and verification"""
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        # Create checkpoint data
         checkpoint = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
@@ -73,20 +79,70 @@ class ColabTrainer:
                 'embedding_dim': self.embedding_dim,
                 'learning_rate': self.learning_rate,
                 'batch_size': self.batch_size
-            }
+            },
+            'timestamp': timestamp,
+            'device': str(self.device)
         }
 
         # Save regular checkpoint
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         checkpoint_path = os.path.join(
             self.checkpoint_dir, f'checkpoint_epoch_{epoch}_{timestamp}.pth')
         torch.save(checkpoint, checkpoint_path)
+        print(f"Saved checkpoint to {checkpoint_path}")
 
         # Save best model if this is the best performance
         if is_best:
-            best_model_path = os.path.join(self.model_dir, 'best_model.pth')
+            # Create versioned best model
+            best_model_path = os.path.join(
+                self.model_dir, f'best_model_{timestamp}.pth')
             torch.save(checkpoint, best_model_path)
+
+            # Update latest best model
+            latest_best_path = os.path.join(self.model_dir, 'best_model.pth')
+            shutil.copy2(best_model_path, latest_best_path)
+
             print(f"Saved new best model with validation loss: {val_loss:.4f}")
+
+            # Create backup of best model
+            backup_path = os.path.join(
+                self.backup_dir, f'best_model_backup_{timestamp}.pth')
+            shutil.copy2(best_model_path, backup_path)
+            print(f"Created backup at {backup_path}")
+
+        # Verify the saved checkpoint
+        self.verify_checkpoint(checkpoint_path)
+
+    def verify_checkpoint(self, checkpoint_path):
+        """Verify that the saved checkpoint can be loaded and contains all required data"""
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=self.device)
+
+            # Check required keys
+            required_keys = [
+                'model_state_dict', 'optimizer_state_dict', 'epoch',
+                'train_loss', 'val_loss', 'user_mapping', 'movie_mapping'
+            ]
+            missing_keys = [
+                key for key in required_keys if key not in checkpoint]
+
+            if missing_keys:
+                print(f"Warning: Checkpoint missing keys: {missing_keys}")
+                return False
+
+            # Verify model can be loaded
+            test_model = CollaborativeFiltering(
+                num_users=len(checkpoint['user_mapping']),
+                num_movies=len(checkpoint['movie_mapping']),
+                embedding_dim=checkpoint['hyperparameters']['embedding_dim']
+            ).to(self.device)
+
+            test_model.load_state_dict(checkpoint['model_state_dict'])
+            print(f"Successfully verified checkpoint at {checkpoint_path}")
+            return True
+
+        except Exception as e:
+            print(f"Error verifying checkpoint: {str(e)}")
+            return False
 
     def load_checkpoint(self, checkpoint_path):
         """Load model from checkpoint"""
@@ -120,17 +176,29 @@ class ColabTrainer:
         plt.show()
 
     def cleanup_old_checkpoints(self, keep_last_n=5):
-        """Keep only the n most recent checkpoints"""
+        """Keep only the n most recent checkpoints and backups"""
+        # Clean up checkpoints
         checkpoints = sorted(
             [f for f in os.listdir(self.checkpoint_dir) if f.endswith('.pth')],
             key=lambda x: os.path.getmtime(
                 os.path.join(self.checkpoint_dir, x))
         )
 
+        # Clean up backups
+        backups = sorted(
+            [f for f in os.listdir(self.backup_dir) if f.endswith('.pth')],
+            key=lambda x: os.path.getmtime(os.path.join(self.backup_dir, x))
+        )
+
         # Remove old checkpoints
         for checkpoint in checkpoints[:-keep_last_n]:
             os.remove(os.path.join(self.checkpoint_dir, checkpoint))
             print(f"Removed old checkpoint: {checkpoint}")
+
+        # Keep only the 3 most recent backups
+        for backup in backups[:-3]:
+            os.remove(os.path.join(self.backup_dir, backup))
+            print(f"Removed old backup: {backup}")
 
     def train(self, resume_from=None):
         """Main training loop"""
