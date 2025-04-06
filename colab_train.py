@@ -6,6 +6,8 @@ from google.colab import drive
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 import shutil
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
 from recommendation_model import CollaborativeFiltering
 from data_loader import DataLoader
@@ -52,10 +54,31 @@ class ColabTrainer:
             checkpoint_interval=50000
         )
 
-        # Load and split the data
-        train_data, val_data = data_loader.load_and_split_data()
-        self.user_mapping = data_loader.user_mapping
-        self.movie_mapping = data_loader.movie_mapping
+        # Load the data
+        df = data_loader.load_data(
+            encoding='utf-8',
+            on_bad_lines='skip',
+            low_memory=False,
+            lineterminator='\n'
+        )
+
+        # Create mappings from user/movie IDs to numerical indices
+        self.user_mapping = {uid: idx for idx,
+                             uid in enumerate(df['user_id'].unique())}
+        self.movie_mapping = {mid: idx for idx,
+                              mid in enumerate(df['movie_id'].unique())}
+
+        # Convert data to list of tuples (user_idx, movie_idx, rating)
+        data = [
+            (self.user_mapping[row['user_id']],
+             self.movie_mapping[row['movie_id']],
+             row['rating_val'])
+            for _, row in df.iterrows()
+        ]
+
+        # Split data into training and validation sets (80/20 split)
+        train_data, val_data = train_test_split(
+            data, test_size=0.2, random_state=42)
 
         return train_data, val_data
 
