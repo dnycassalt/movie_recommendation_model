@@ -1,16 +1,17 @@
-import os
-import torch
-import torch.nn as nn
-from datetime import datetime
-from google.colab import drive
-import matplotlib.pyplot as plt
-from IPython.display import clear_output
-import shutil
-import pandas as pd
-from sklearn.model_selection import train_test_split
-
-from recommendation_model import CollaborativeFiltering
+# Add matplotlib inline magic command at the top
 from data_loader import DataLoader
+from recommendation_model import CollaborativeFiltering
+from sklearn.model_selection import train_test_split
+import pandas as pd
+import shutil
+from IPython.display import clear_output
+import matplotlib.pyplot as plt
+from google.colab import drive
+from datetime import datetime
+import torch.nn as nn
+import torch
+import os
+%matplotlib inline
 
 
 class ColabTrainer:
@@ -32,9 +33,13 @@ class ColabTrainer:
         self.batch_size = batch_size
         self.num_epochs = num_epochs
 
-        # Initialize lists to store losses
+        # Initialize lists to store metrics
         self.train_losses = []
         self.val_losses = []
+        self.train_precisions = []
+        self.train_recalls = []
+        self.val_precisions = []
+        self.val_recalls = []
 
         # Set device
         self.device = torch.device(
@@ -197,17 +202,57 @@ class ColabTrainer:
         print(f"Resumed from epoch {checkpoint['epoch']}")
         return checkpoint['epoch'], checkpoint['val_loss']
 
+    def calculate_precision_recall(self, predictions, ratings, threshold=3.5):
+        """Calculate precision and recall for a batch of predictions"""
+        # Convert predictions and ratings to binary (like/dislike)
+        pred_binary = (predictions >= threshold).float()
+        true_binary = (ratings >= threshold).float()
+
+        # Calculate true positives, false positives, and false negatives
+        true_positives = (pred_binary * true_binary).sum().item()
+        false_positives = (pred_binary * (1 - true_binary)).sum().item()
+        false_negatives = ((1 - pred_binary) * true_binary).sum().item()
+
+        # Calculate precision and recall
+        precision = true_positives / (true_positives + false_positives + 1e-10)
+        recall = true_positives / (true_positives + false_negatives + 1e-10)
+
+        return precision, recall
+
     def plot_losses(self):
-        """Plot training and validation losses"""
+        """Plot training and validation losses and metrics"""
         clear_output(wait=True)
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.train_losses, label='Training Loss')
-        plt.plot(self.val_losses, label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Training History')
-        plt.legend()
-        plt.show()
+
+        # Create figure with two subplots
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+        # Plot losses
+        ax1.plot(self.train_losses, label='Training Loss')
+        ax1.plot(self.val_losses, label='Validation Loss')
+        ax1.set_xlabel('Epoch')
+        ax1.set_ylabel('Loss')
+        ax1.set_title('Training History')
+        ax1.legend()
+        ax1.grid(True)
+
+        # Plot precision and recall
+        ax2.plot(self.train_precisions,
+                 label='Training Precision', color='green')
+        ax2.plot(self.train_recalls, label='Training Recall', color='blue')
+        ax2.plot(self.val_precisions, label='Validation Precision',
+                 color='green', linestyle='--')
+        ax2.plot(self.val_recalls, label='Validation Recall',
+                 color='blue', linestyle='--')
+        ax2.set_xlabel('Epoch')
+        ax2.set_ylabel('Score')
+        ax2.set_title('Precision and Recall')
+        ax2.legend()
+        ax2.grid(True)
+
+        # Use IPython's display to show the plot
+        from IPython.display import display
+        display(fig)
+        plt.close(fig)  # Close the figure to free memory
 
     def cleanup_old_checkpoints(self, keep_last_n=5):
         """Keep only the n most recent checkpoints and backups"""
@@ -253,6 +298,8 @@ class ColabTrainer:
             # Training phase
             self.model.train()
             total_train_loss = 0
+            total_train_precision = 0
+            total_train_recall = 0
             num_batches = 0
 
             for i in range(0, len(train_data), self.batch_size):
@@ -271,15 +318,26 @@ class ColabTrainer:
                 loss.backward()
                 self.optimizer.step()
 
+                # Calculate metrics
+                precision, recall = self.calculate_precision_recall(
+                    predictions, ratings)
+                total_train_precision += precision
+                total_train_recall += recall
                 total_train_loss += loss.item()
                 num_batches += 1
 
             avg_train_loss = total_train_loss / num_batches
+            avg_train_precision = total_train_precision / num_batches
+            avg_train_recall = total_train_recall / num_batches
             self.train_losses.append(avg_train_loss)
+            self.train_precisions.append(avg_train_precision)
+            self.train_recalls.append(avg_train_recall)
 
             # Validation phase
             self.model.eval()
             total_val_loss = 0
+            total_val_precision = 0
+            total_val_recall = 0
             num_val_batches = 0
 
             with torch.no_grad():
@@ -294,11 +352,20 @@ class ColabTrainer:
                     predictions = self.model(users, movies)
                     loss = self.criterion(predictions, ratings)
 
+                    # Calculate metrics
+                    precision, recall = self.calculate_precision_recall(
+                        predictions, ratings)
+                    total_val_precision += precision
+                    total_val_recall += recall
                     total_val_loss += loss.item()
                     num_val_batches += 1
 
             avg_val_loss = total_val_loss / num_val_batches
+            avg_val_precision = total_val_precision / num_val_batches
+            avg_val_recall = total_val_recall / num_val_batches
             self.val_losses.append(avg_val_loss)
+            self.val_precisions.append(avg_val_precision)
+            self.val_recalls.append(avg_val_recall)
 
             # Plot progress
             self.plot_losses()
@@ -315,7 +382,11 @@ class ColabTrainer:
 
             print(f"Epoch {epoch+1}/{self.num_epochs}")
             print(f"Training Loss: {avg_train_loss:.4f}")
+            print(f"Training Precision: {avg_train_precision:.4f}")
+            print(f"Training Recall: {avg_train_recall:.4f}")
             print(f"Validation Loss: {avg_val_loss:.4f}")
+            print(f"Validation Precision: {avg_val_precision:.4f}")
+            print(f"Validation Recall: {avg_val_recall:.4f}")
             print("-" * 50)
 
 
