@@ -10,7 +10,7 @@ class DataLoader:
         self,
         file_path: str,
         checkpoint_file: str = 'checkpoint.pkl',
-        chunk_size: int = 250,
+        chunk_size: int = 5250,
         checkpoint_interval: int = 50000
     ):
         self.file_path = file_path
