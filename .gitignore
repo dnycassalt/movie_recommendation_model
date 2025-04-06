@@ -30,6 +30,7 @@ wheels/
 *.pkl
 *.h5
 *.hdf5
+*.pkl
 checkpoints/
 models/
 runs/
