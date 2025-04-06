@@ -1,17 +1,16 @@
-# Add matplotlib inline magic command at the top
-from data_loader import DataLoader
-from recommendation_model import CollaborativeFiltering
-from sklearn.model_selection import train_test_split
-import pandas as pd
-import shutil
-from IPython.display import clear_output
-import matplotlib.pyplot as plt
-from google.colab import drive
-from datetime import datetime
-import torch.nn as nn
-import torch
 import os
-%matplotlib inline
+import torch
+import torch.nn as nn
+from datetime import datetime
+from google.colab import drive
+import matplotlib.pyplot as plt
+from IPython.display import clear_output, display
+import shutil
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+from recommendation_model import CollaborativeFiltering
+from data_loader import DataLoader
 
 
 class ColabTrainer:
@@ -250,7 +249,6 @@ class ColabTrainer:
         ax2.grid(True)
 
         # Use IPython's display to show the plot
-        from IPython.display import display
         display(fig)
         plt.close(fig)  # Close the figure to free memory
 
