@@ -1,18 +1,43 @@
-from flask import Flask, request, jsonify, send_from_directory
-import torch
 import os
+import torch
 import pandas as pd
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='')
 CORS(app)
 
-# Load model and mappings
-model = torch.load('model.pt', map_location=torch.device('cpu'))
-model.eval()
+# Number of movies in the dataset
+NUM_MOVIES = 286071
 
-# Load ratings data for watched movies
-ratings_df = pd.read_csv('data/processed/ratings.csv')
+# Load user mapping
+users_path = os.path.join('..', 'data', 'processed', 'users.csv')
+try:
+    users_df = pd.read_csv(users_path)
+    # Create mapping from username to numeric index
+    username_to_id = {username: idx for idx,
+                      username in enumerate(users_df['username'])}
+    logger.info(f"Loaded {len(username_to_id)} users from {users_path}")
+except Exception as e:
+    logger.error(f"Error loading users data: {str(e)}")
+    raise
+
+# Load the model
+model_path = os.getenv('MODEL_PATH', 'model_prepared.pt')
+logger.info(f"Loading model from {model_path}")
+
+try:
+    model = torch.load(model_path, weights_only=False)
+    model.eval()
+    logger.info("Model loaded successfully")
+except Exception as e:
+    logger.error(f"Error loading model: {str(e)}")
+    raise
 
 
 @app.route('/')
@@ -24,51 +49,49 @@ def serve():
 def predict():
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        username = data.get('user_id')  # Actually a username
 
-        if not user_id:
-            return jsonify({'error': 'user_id is required'}), 400
+        if not username:
+            return jsonify({"error": "Missing user_id"}), 400
 
-        # Get list of movies user has already watched
-        watched_movies = set(
-            ratings_df[ratings_df['user_id'] == user_id]['movie_id'].tolist())
+        # Convert username to numeric ID
+        if username not in username_to_id:
+            return jsonify({"error": f"User {username} not found"}), 404
 
-        # Create tensors for all movies
-        movie_ids = torch.arange(model.num_movies)
-        user_ids = torch.full((model.num_movies,), int(user_id))
+        user_id = username_to_id[username]
+        user_tensor = torch.tensor([user_id], dtype=torch.long)
 
         # Get predictions for all movies
-        with torch.no_grad():
-            predictions = model(user_ids, movie_ids)
+        predictions = []
+        for movie_id in range(NUM_MOVIES):
+            movie_tensor = torch.tensor([movie_id], dtype=torch.long)
+            with torch.no_grad():
+                prediction = model(user_tensor, movie_tensor)
+                # Clamp predictions between 0 and 10
+                prediction = torch.clamp(prediction, 0, 10)
+                predictions.append((movie_id, prediction.item()))
 
-        # Create a mask for unwatched movies
-        unwatched_mask = ~torch.tensor(
-            [movie_id in watched_movies for movie_id in range(model.num_movies)])
-
-        # Apply mask to predictions
-        unwatched_predictions = predictions[unwatched_mask]
-        unwatched_movie_ids = movie_ids[unwatched_mask]
-
-        # Get top 10 predictions
-        top_k = 10
-        top_values, top_indices = torch.topk(unwatched_predictions, k=top_k)
+        # Sort predictions and get top 50
+        predictions.sort(key=lambda x: x[1], reverse=True)
+        top_50 = predictions[:50]
 
         # Convert to list format
-        recommendations = []
-        for value, idx in zip(top_values, top_indices):
-            movie_id = unwatched_movie_ids[idx].item()
-            recommendations.append({
+        recommendations = [
+            {
                 'movie_id': str(movie_id),
-                'predicted_rating': value.item()
-            })
+                'predicted_rating': rating
+            }
+            for movie_id, rating in top_50
+        ]
 
         return jsonify({
-            'recommendations': recommendations,
-            'total_unwatched': len(unwatched_movie_ids)
+            'user_id': username,
+            'recommendations': recommendations
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Prediction error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/health', methods=['GET'])
@@ -77,4 +100,5 @@ def health_check():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.getenv('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)

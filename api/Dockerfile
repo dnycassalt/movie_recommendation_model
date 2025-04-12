@@ -7,6 +7,8 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
+    nginx \
+    supervisor \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
@@ -27,6 +29,9 @@ COPY --chown=appuser:appuser model_prepared.pt .
 # Copy the application code
 COPY --chown=appuser:appuser app.py .
 
+# Copy the frontend build
+COPY --chown=appuser:appuser ../frontend/build /app/frontend
+
 # Install production server
 RUN pip install gunicorn
 
@@ -34,5 +39,14 @@ RUN pip install gunicorn
 ENV PORT=8080
 ENV MODEL_PATH=/app/model_prepared.pt
 
-# Run the application
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app 
+# Configure nginx
+COPY --chown=appuser:appuser nginx.conf /etc/nginx/nginx.conf
+
+# Configure supervisor
+COPY --chown=appuser:appuser supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Switch back to root for supervisor
+USER root
+
+# Run supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"] 

@@ -8,8 +8,9 @@ ROOT_PASSWORD ?= $(shell openssl rand -base64 12)
 REGION ?= us-central1
 TIER ?= db-f1-micro
 STORAGE_SIZE ?= 10GB
+PROXY_PORT ?= 5432
 
-.PHONY: init-db create-db-user create-service-account setup-db setup-secrets create-schema help preprocess-csv import-data
+.PHONY: init-db create-db-user create-service-account setup-db setup-secrets create-schema help preprocess-csv import-data start-proxy check-proxy stop-proxy
 
 help:
 	@echo "Available commands:"
@@ -21,6 +22,9 @@ help:
 	@echo "  make setup-db             - Run all setup steps"
 	@echo "  make preprocess-csv       - Preprocess CSV files"
 	@echo "  make import-data          - Import data into the database"
+	@echo "  make start-proxy          - Start Cloud SQL Auth proxy for local connection"
+	@echo "  make check-proxy          - Check if Cloud SQL Auth proxy is running"
+	@echo "  make stop-proxy           - Stop Cloud SQL Auth proxy"
 
 init-db:
 	@echo "Enabling required APIs..."
@@ -225,4 +229,33 @@ import-data: preprocess-csv
 	@echo "Cleaning up..."
 	@gsutil rm gs://$(BUCKET_NAME)/*.csv
 	@gsutil rb gs://$(BUCKET_NAME)
-	@echo "Data import completed successfully!" 
+	@echo "Data import completed successfully!"
+
+start-proxy:
+	@echo "Starting Cloud SQL Auth proxy..."
+	@echo "Connecting to $(PROJECT_ID):$(REGION):$(DB_INSTANCE_NAME) on port $(PROXY_PORT)"
+	@echo "Use Ctrl+C to stop the proxy"
+	@echo "To connect to the database, use:"
+	@echo "  psql -h localhost -p $(PROXY_PORT) -U $(DB_USER) -d $(DB_NAME)"
+	@cloud-sql-proxy --port $(PROXY_PORT) $(PROJECT_ID):$(REGION):$(DB_INSTANCE_NAME)
+
+check-proxy:
+	@if lsof -i :$(PROXY_PORT) > /dev/null 2>&1; then \
+		echo "Cloud SQL Auth proxy is running on port $(PROXY_PORT)"; \
+		echo "Process info:"; \
+		lsof -i :$(PROXY_PORT); \
+	else \
+		echo "Cloud SQL Auth proxy is not running on port $(PROXY_PORT)"; \
+		echo "To start the proxy, run: make start-proxy"; \
+		exit 1; \
+	fi
+
+stop-proxy:
+	@if lsof -i :$(PROXY_PORT) > /dev/null 2>&1; then \
+		echo "Stopping Cloud SQL Auth proxy on port $(PROXY_PORT)"; \
+		kill $$(lsof -t -i :$(PROXY_PORT)); \
+		echo "Proxy stopped successfully"; \
+	else \
+		echo "No Cloud SQL Auth proxy running on port $(PROXY_PORT)"; \
+		exit 0; \
+	fi 
