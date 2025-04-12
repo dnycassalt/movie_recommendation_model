@@ -9,14 +9,26 @@ theme:
 
 nav:
   - Home: index.md
+  - API Documentation:
+    - Overview: api/overview.md
+    - Deployment: api/deployment.md
+    - Endpoints: api/endpoints.md
+  - Frontend Documentation:
+    - Overview: frontend.md
+  - Database:
+    - Schema: db/schema.md
+    - Setup: db/setup.md
   - Model:
-    - Overview: model/overview.md
-    - Training Process: model/training.md
-    - Understanding Epochs: model/epochs.md
-    - Understanding Gradients: model/gradients.md
-    - Hyperparameters: model/hyperparameters.md
-    - Model Evaluation: model/evaluation.md
-    - Evaluation Metrics: model/metrics.md
+    - Training: model/training.md
+    - Deployment: model/deployment.md
+  - Data Visualization:
+    - Overview: data-viz/overview.md
+    - Movies: data-viz/movies.md
+    - Users: data-viz/users.md
+    - Ratings: data-viz/ratings.md
+  - Development:
+    - Setup: development/setup.md
+    - Guidelines: development/guidelines.md
   - Code:
     - Model Implementation: code/model_implementation.md
     - Data Processing: code/data_processing.md
@@ -28,14 +40,13 @@ nav:
     - Data Processing: data/processing.md
     - Data Analysis: data/analysis.md
   - API:
-    - Overview: api/overview.md
-    - Endpoints: api/endpoints.md
     - Authentication: api/authentication.md
   - Deployment:
     - Overview: deployment/overview.md
     - Requirements: deployment/requirements.md
     - Configuration: deployment/configuration.md
     - Monitoring: deployment/monitoring.md
+    - Google Cloud Run: deployment/google_cloud_run.md
 
 markdown_extensions:
   - pymdownx.highlight

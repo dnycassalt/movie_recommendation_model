@@ -289,4 +289,27 @@ test_config.py
 *.bak
 *.backup
 *.old
-*.orig 
+*.orig
+
+# Model files
+*.pkl
+*.pt
+*.pth
+checkpoint.pkl
+model.pt
+
+# Service account key
+service-account-key.json
+
+# Data files
+data/processed/
+data/raw/
+*.csv
+*.json
+
+# Build files
+frontend/build/
+frontend/node_modules/
+
+# Documentation
+site/ 

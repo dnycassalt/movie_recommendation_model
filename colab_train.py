@@ -248,9 +248,17 @@ class ColabTrainer:
         ax2.legend()
         ax2.grid(True)
 
-        # Use IPython's display to show the plot
+        # Adjust layout
+        plt.tight_layout()
+
+        # Display the plot
         display(fig)
-        plt.close(fig)  # Close the figure to free memory
+
+        # Close the figure to free memory
+        plt.close(fig)
+
+        # Force display update
+        clear_output(wait=True)
 
     def cleanup_old_checkpoints(self, keep_last_n=5):
         """Keep only the n most recent checkpoints and backups"""
