@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../data/processed:/app/data
+      - ./app.py:/app/app.py
+    environment:
+      - PORT=8080
+      - MODEL_PATH=model_prepared.pt
+    restart: unless-stopped

@@ -43,7 +43,7 @@ function App() {
             type="text"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
-            placeholder="Enter user ID"
+            placeholder="Enter username"
             required
           />
           <button type="submit" disabled={loading}>
@@ -56,13 +56,15 @@ function App() {
         {recommendations.length > 0 && (
           <div className="recommendations">
             <h2>Top Recommendations</h2>
-            <ul>
+            <div className="movie-grid">
               {recommendations.map((rec, index) => (
-                <li key={index}>
-                  Movie ID: {rec.movie_id} - Predicted Rating: {rec.predicted_rating.toFixed(2)}
-                </li>
+                <div key={index} className="movie-card">
+                  <h3>{rec.title || 'Unknown Title'}</h3>
+                  <p className="movie-year">{rec.year ? `(${rec.year})` : ''}</p>
+                  <p className="movie-rating">Rating: {rec.predicted_rating.toFixed(1)}/10</p>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
       </header>
