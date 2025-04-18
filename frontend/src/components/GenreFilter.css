@@ -1,0 +1,37 @@
+.genre-filter {
+    margin: 2rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.genre-filter label {
+    color: #e5e5e5;
+    font-size: 1rem;
+}
+
+.genre-select {
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 4px;
+    background-color: #2a2a2a;
+    color: white;
+    cursor: pointer;
+    min-width: 200px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.genre-select:focus,
+.genre-select:hover {
+    background-color: #333;
+    box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.5);
+}
+
+.genre-select option {
+    background-color: #2a2a2a;
+    color: white;
+    padding: 0.5rem;
+}

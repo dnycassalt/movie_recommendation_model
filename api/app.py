@@ -1,6 +1,7 @@
 import os
 import torch
 import pandas as pd
+import json
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import logging
@@ -40,6 +41,16 @@ try:
     username_to_id = {username: idx for idx,
                       username in enumerate(users_df['username'])}
     logger.info(f"Loaded {len(username_to_id)} users from {users_path}")
+
+    # Create persona to username mapping
+    persona_to_username = {
+        'persona_1': 'filipe_furtado',  # 7,894 reviews
+        'persona_2': 'settingsun',  # 7,121 reviews
+        'persona_3': 'johntyler',  # 6,553 reviews
+        'persona_4': 'colonelmortimer',  # 5,278 reviews
+        'persona_5': 'zoltarak'  # 5,072 reviews
+    }
+    logger.info("Created persona to username mapping")
 except Exception as e:
     logger.error(f"Error loading users data: {str(e)}")
     raise
@@ -82,27 +93,32 @@ def serve_static(path):
 def predict():
     try:
         data = request.get_json()
-        username = data.get('user_id')  # Actually a username
+        persona = data.get('persona')
 
-        if not username:
-            return jsonify({"error": "Missing user_id"}), 400
+        # If persona is provided, use the mapped username
+        if persona and persona in persona_to_username:
+            username = persona_to_username[persona]
+            logger.info(
+                f"Using mapped username {username} for persona {persona}")
 
         # Convert username to numeric ID
         if username not in username_to_id:
             return jsonify({"error": f"User {username} not found"}), 404
 
         user_id = username_to_id[username]
-        user_tensor = torch.tensor([user_id], dtype=torch.long)
 
-        # Get predictions for all movies
-        predictions = []
-        for movie_id in range(NUM_MOVIES):
-            movie_tensor = torch.tensor([movie_id], dtype=torch.long)
-            with torch.no_grad():
-                prediction = model(user_tensor, movie_tensor)
-                # Clamp predictions between 0 and 10
-                prediction = torch.clamp(prediction, 0, 10)
-                predictions.append((movie_id, prediction.item()))
+        # Get predictions for all movies at once using vectorization
+        movie_ids = torch.arange(NUM_MOVIES, dtype=torch.long)
+        # Create a tensor of the same user ID repeated for all movies
+        user_ids = torch.full((NUM_MOVIES,), user_id, dtype=torch.long)
+
+        with torch.no_grad():
+            # Make predictions for all movies in one batch
+            predictions = model(user_ids, movie_ids)
+            # Clamp all predictions between 0 and 10
+            predictions = torch.clamp(predictions, 0, 10)
+            # Convert to list of (movie_id, prediction) tuples
+            predictions = list(zip(movie_ids.tolist(), predictions.tolist()))
 
         # Sort predictions and get top 50
         predictions.sort(key=lambda x: x[1], reverse=True)
@@ -119,11 +135,34 @@ def predict():
                 year = int(movie['year_released']) if pd.notna(
                     movie['year_released']) else None
 
+                # Extract genre information
+                genres = []
+                if pd.notna(movie['genres']) and movie['genres'] != '[]':
+                    try:
+                        # Parse genres as JSON
+                        genres = json.loads(movie['genres'])
+                    except json.JSONDecodeError:
+                        logger.warning(
+                            f"Failed to parse genres for movie {movie_id}")
+
+                # Determine primary genre for frontend display
+                primary_genre = genres[0] if genres else "No Genre"
+
+                # Get poster URL if available
+                poster_url = None
+                if pd.notna(movie.get('image_url')):
+                    base_url = "https://a.ltrbxd.com/resized"
+                    image_path = f"{movie['image_url']}.jpg"
+                    poster_url = f"{base_url}/{image_path}"
+
                 recommendations.append({
                     'movie_id': str(movie_id),
                     'title': title,
                     'year': year,
-                    'predicted_rating': rating
+                    'predicted_rating': rating,
+                    'genres': genres,
+                    'genre': primary_genre,  # Add primary genre for frontend
+                    'poster_url': poster_url
                 })
             else:
                 logger.warning(f"Movie ID {movie_id} not found in movies data")

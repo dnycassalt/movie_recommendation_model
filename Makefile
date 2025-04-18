@@ -68,11 +68,11 @@ run-docker: check-files
 	docker rm app-local 2>/dev/null || true
 	docker rmi app-local 2>/dev/null || true
 	
-	@echo "Building frontend..."
+	@echo "Building frontend with local API URL..."
 	cd $(FRONTEND_DIR) && npm run build
 	
 	@echo "Building Docker image for linux/amd64..."
-	docker buildx build --platform=linux/amd64 -t app-local .
+	docker buildx build --platform=linux/amd64 --build-arg ENV_FILE=.env.local -t app-local .
 	
 	@echo "Starting container..."
 	docker run --platform linux/amd64 \
@@ -103,27 +103,19 @@ prepare: check-files
 
 # Production
 build-prod: check-files
-	@echo "Building production image..."
-	@if [ -z "$(PROJECT_ID)" ]; then \
-		echo "Error: PROJECT_ID is not set. Please run 'gcloud config set project YOUR_PROJECT_ID' or set PROJECT_ID environment variable."; \
-		exit 1; \
-	fi
+	@echo "Building production version..."
+	@echo "Cleaning previous build and cache..."
+	cd $(FRONTEND_DIR) && rm -rf build node_modules/.cache && npm cache clean --force
+	@echo "Installing dependencies..."
+	cd $(FRONTEND_DIR) && npm ci
 	@echo "Building frontend with production environment..."
-	cd $(FRONTEND_DIR) && npm run build
-	@echo "Copying required files..."
-	@for file in $(API_DIR)/model_prepared.pt data/processed/movies.csv data/processed/users.csv; do \
-		if [ ! -f "$$file" ]; then \
-			echo "Error: Required file $$file not found"; \
-			exit 1; \
-		fi; \
-		cp "$$file" .; \
-	done
-	@echo "Building Docker image..."
-	docker build -t gcr.io/$(PROJECT_ID)/$(SERVICE_NAME) .
-	@echo "Cleaning up..."
-	rm model_prepared.pt
-	rm movies.csv
-	rm users.csv
+	cd $(FRONTEND_DIR) && \
+		REACT_APP_API_URL=https://recommendation-service-zuhgvuyuqq-ue.a.run.app \
+		NODE_ENV=production \
+		npm run build:prod
+	@echo "Building Docker image for linux/amd64..."
+	docker buildx build --platform=linux/amd64 -t gcr.io/$(PROJECT_ID)/$(SERVICE_NAME) .
+	@echo "Production build completed successfully"
 
 push-prod:
 	@echo "Pushing to Google Container Registry..."

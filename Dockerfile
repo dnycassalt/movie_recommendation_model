@@ -1,12 +1,3 @@
-# Build stage
-FROM node:18-alpine as frontend-builder
-
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build
-
 # Final stage
 FROM python:3.9-slim
 
@@ -27,8 +18,8 @@ COPY api/model_prepared.pt .
 COPY data/processed/movies.csv .
 COPY data/processed/users.csv .
 
-# Copy only the built frontend files to the correct location
-COPY --from=frontend-builder /app/frontend/build ./static
+# Copy the built frontend files
+COPY frontend/build ./static
 
 # Set environment variables
 ENV PORT=8080

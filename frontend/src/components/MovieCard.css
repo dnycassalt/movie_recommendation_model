@@ -1,0 +1,99 @@
+.movie-card {
+    width: 300px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #2a2a2a;
+    margin: 1rem;
+    transition: transform 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.movie-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.movie-image {
+    height: 450px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.movie-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.movie-card:hover .movie-overlay {
+    opacity: 1;
+}
+
+.watched-button {
+    padding: 0.5rem 1rem;
+    border: 2px solid white;
+    background: transparent;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.watched-button:hover {
+    background: white;
+    color: black;
+}
+
+.movie-info {
+    padding: 1rem;
+    background-color: #2a2a2a;
+}
+
+.movie-info h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.genre {
+    color: #999;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Genre-specific styles */
+.action {
+    border-bottom: 3px solid #e50914;
+}
+
+.family {
+    border-bottom: 3px solid #47c1bf;
+}
+
+.thriller {
+    border-bottom: 3px solid #8c44ff;
+}
+
+.romance {
+    border-bottom: 3px solid #ff69b4;
+}
+
+.adventure {
+    border-bottom: 3px solid #ffd700;
+}

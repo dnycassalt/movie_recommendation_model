@@ -1,16 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Navbar from './components/Navbar';
+import MovieCard from './components/MovieCard';
+import GenreFilter from './components/GenreFilter';
 import './App.css';
 
 function App() {
-  const [userId, setUserId] = useState('');
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedGenre, setSelectedGenre] = useState('All');
+  const [uniqueGenres, setUniqueGenres] = useState([]);
+  const [selectedPersona, setSelectedPersona] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (recommendations.length > 0) {
+      // Extract all unique genres from recommendations
+      const allGenres = new Set();
+      recommendations.forEach(movie => {
+        if (movie.genre) {
+          allGenres.add(movie.genre);
+        }
+      });
+      setUniqueGenres(Array.from(allGenres).sort());
+    }
+  }, [recommendations]);
+
+  const handlePersonaSelect = async (persona) => {
+    setSelectedPersona(persona);
     setLoading(true);
     setError(null);
+    setSelectedGenre('All'); // Reset genre filter when fetching new recommendations
 
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/predict`, {
@@ -18,7 +37,9 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({
+          persona: persona
+        }),
       });
 
       if (!response.ok) {
@@ -34,40 +55,59 @@ function App() {
     }
   };
 
+  // Filter recommendations based on selected genre
+  const filteredRecommendations = selectedGenre === 'All'
+    ? recommendations
+    : recommendations.filter(movie => movie.genre === selectedGenre);
+
+  // Group filtered movies by genre
+  const groupedMovies = filteredRecommendations.reduce((acc, movie) => {
+    const genre = movie.genre || 'No Genre';
+    if (!acc[genre]) {
+      acc[genre] = [];
+    }
+    acc[genre].push(movie);
+    return acc;
+  }, {});
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Movie Recommendations</h1>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="Enter username"
-            required
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? 'Loading...' : 'Get Recommendations'}
-          </button>
-        </form>
+    <div className="app">
+      <Navbar onPersonaSelect={handlePersonaSelect} />
 
-        {error && <div className="error">{error}</div>}
+      <main className="main-content">
+        {error && <div className="error-message">{error}</div>}
 
-        {recommendations.length > 0 && (
-          <div className="recommendations">
-            <h2>Top Recommendations</h2>
-            <div className="movie-grid">
-              {recommendations.map((rec, index) => (
-                <div key={index} className="movie-card">
-                  <h3>{rec.title || 'Unknown Title'}</h3>
-                  <p className="movie-year">{rec.year ? `(${rec.year})` : ''}</p>
-                  <p className="movie-rating">Rating: {rec.predicted_rating.toFixed(1)}/10</p>
+        {loading ? (
+          <div className="loading-container">
+            <div className="loading-text">Loading recommendations...</div>
+          </div>
+        ) : (
+          <>
+            {recommendations.length > 0 && (
+              <div className="genre-filter">
+                <GenreFilter
+                  genres={uniqueGenres}
+                  selectedGenre={selectedGenre}
+                  onGenreSelect={setSelectedGenre}
+                />
+              </div>
+            )}
+
+            <div className="recommendations">
+              {Object.entries(groupedMovies).map(([genre, movies]) => (
+                <div key={genre} className="genre-section">
+                  <h2 className="genre-title">{genre}</h2>
+                  <div className="movie-grid">
+                    {movies.map((movie) => (
+                      <MovieCard key={movie.movie_id} movie={movie} />
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
-      </header>
+      </main>
     </div>
   );
 }
